@@ -1,0 +1,161 @@
+
+---
+title: "Results: test data set"
+author: "Emilio HM"
+output: html_document
+runtime: shiny
+---
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(knitr)
+library(dplyr)
+library(jpeg)
+library(plotly)
+options(stringsAsFactors = FALSE)
+
+
+mother_folder <- "C:\\Users\\emilio\\Documents\\fashion-dataset\\thesis" #where to find styles.csv
+image_folder <- "C:\\Users\\emilio\\Documents\\fashion-dataset\\thesis\\images"
+
+
+distances_df <- read.csv(paste0(mother_folder, "\\outputs\\test_distances_four_models.csv")) %>% select(-Unnamed..0)
+```
+
+
+-----------------------------------------------------------------------------
+<center> <h1> <font size="+1"> <b> Parameter Configuration </b> </font> </h1> </center>
+```{r s1}
+display_image <- function(name, text.to.show = " ", color.to.use, additional.info){
+  
+  if(is.na(name) == FALSE){
+  extension <- sub('.*\\.', '', name)
+  if(extension != "png"){
+    jj <- readJPEG(paste0(name), native=TRUE)
+  }else{
+    jj <- readPNG(name, native = TRUE)
+  }
+  }
+  
+  plot(c(0, 1), c(0, 1), type="n", ann=FALSE, axes=FALSE, mar = c(0,0,0,0))
+  title(main = list(text.to.show, cex = 1.5,
+                    col = color.to.use, font = 2), 
+        xlab = list(additional.info, font = 1, cex = 2))
+  if(is.na(name) == FALSE){
+  rasterImage(jj,0,0,1,1)
+  }
+}
+
+show_pairs <- function(image.selec, distances_df, run.selec, image_folder){
+  
+  df <- distances_df %>% filter(V1 == image.selec) %>%
+                           select_(.dots = as.list(c("V1", "V2", "group", "label", paste0(run.selec, "_test_distances")))) %>%
+                           arrange_(.dots = paste0(run.selec, "_test_distances")) 
+  
+  return(df)
+}
+graph_ranking_images <- function(image.selec, distances_df, run.selec, image_folder){
+  
+    pairs <- distances_df %>% filter(V1 == image.selec) %>%
+                           arrange_(.dots = paste0(run.selec, "_test_distances")) 
+
+    par(mfrow = c(2, 5))
+    
+    display_image(paste0(image_folder, "\\", pairs$V1[1]), 
+                    text.to.show = '', 
+                    color.to.use = "black", 
+                    additional.info = '')
+    
+    for(i in 1:4){
+      display_image(NA, 
+                    text.to.show = '', 
+                    color.to.use = "black", 
+                    additional.info = '')
+    }
+    
+    for(i in 1:min(nrow(pairs), 5)){
+      display_image(paste0(image_folder, "\\", pairs$V2[i]), 
+                    text.to.show = '', 
+                    color.to.use = "black", 
+                    additional.info = '')
+    }
+
+}
+graph_ranking_images_cont <- function(image.selec, distances_df, run.selec, image_folder){
+  
+    pairs <- distances_df %>% filter(V1 == image.selec) %>%
+                           arrange_(.dots = paste0(run.selec, "_test_distances")) 
+
+    if(nrow(pairs) > 5){
+    
+    par(mfrow = c(2, 5))
+    
+    for(i in 6:nrow(pairs)){
+      display_image(paste0(image_folder, "\\", pairs$V2[i]), 
+                    text.to.show = '', 
+                    color.to.use = "black", 
+                    additional.info = '')
+    }
+
+    }
+}
+
+###############################
+
+selectInput("run", "Select a model ", c("vgg_euclidean_cont1lim", "vgg_euclidean_cont2lims", "scratchmodel_euclidean_cont1lim", "scratchmodel_euclidean_cont2lims"))
+
+selectInput("group", "Select a group/category ", sort(distances_df$group))
+
+
+group.selec <- reactive({input$group})
+
+images_options <- reactive({
+  distances_group_df <- distances_df %>% filter(group == group.selec()) %>% select(V1) %>% distinct() %>% as.vector()
+  return(distances_group_df)
+})
+renderUI({selectInput("image", "Select an image", images_options(), width = '100%')})
+
+
+################################
+
+
+run.selec <- reactive({input$run})
+image.selec <- reactive({input$image})
+```
+
+
+-----------------------------------------------------------------------------
+<center> <h1> <font size="+1"> <b> Image Pairs' Distances </b> </font> </h1> </center>
+```{r s2}
+renderTable(show_pairs(image.selec = image.selec(), distances_df, run.selec = run.selec(), image_folder), escape = FALSE)
+
+```
+
+
+-----------------------------------------------------------------------------
+<center> <h1> <font size="+1"> <b> Image Pairs' Ranking </b> </font> </h1> </center>
+<center> <h1> <font size="+1"> <b>  </b> </font> </h1> </center>
+```{r s3}
+renderPlot(graph_ranking_images(image.selec(), distances_df, run.selec(), image_folder))
+renderPlot(graph_ranking_images_cont(image.selec(), distances_df, run.selec(), image_folder))
+
+
+#include_graphics(paste0("images/", images_options2()))
+
+  
+#renderImage({list(src = c("./images/19747.jpg"),
+#         contentType = 'image/jpg',
+#         width = 400,
+#         height = 300,
+#         alt = "This is alternate text")}, deleteFile = TRUE)
+
+#df <- data.frame(image = c('<img src="19747.jpg" width="20%" height="20%">' ), title = "here is a title")
+#DT::renderDataTable(df, escape = FALSE)
+
+#<img src="19747.jpg" width="20%" height="20%">
+
+```
+
+
+
